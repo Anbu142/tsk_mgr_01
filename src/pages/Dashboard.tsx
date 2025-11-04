@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 function Dashboard() {
   const navigate = useNavigate();
@@ -10,10 +11,34 @@ function Dashboard() {
     { id: 2, text: 'Review Q4 financial report', completed: false },
     { id: 3, text: 'Conduct performance reviews', completed: false },
   ]);
+  const [loading, setLoading] = useState(true);
 
-  const handleLogout = () => {
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        navigate('/login');
+      } else {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
     navigate('/');
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#1E2A5A] to-[#1A2847] flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
 
   const handleAddTask = () => {
     setNewTask('');

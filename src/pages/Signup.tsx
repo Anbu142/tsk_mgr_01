@@ -1,15 +1,44 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 function Signup() {
   const navigate = useNavigate();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleSignup = (e: React.FormEvent) => {
+  const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/dashboard');
+    setError('');
+    setLoading(true);
+
+    try {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
+
+      if (signUpError) {
+        setError(signUpError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred');
+      setLoading(false);
+    }
   };
 
   return (
@@ -19,6 +48,12 @@ function Signup() {
           <h1 className="text-[1.85rem] font-bold text-white mb-5">
             Join us and stay on top of your tasks.
           </h1>
+
+          {error && (
+            <div className="bg-red-500/20 border border-red-500/50 text-white px-4 py-3 rounded-lg mb-4">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSignup} className="space-y-6">
             <div>
@@ -68,9 +103,10 @@ function Signup() {
 
             <button
               type="submit"
-              className="w-full bg-white text-[#1E2A5A] font-bold py-4 rounded-xl transition-all duration-300 hover:bg-[#F8FAFC] hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-[1.02] mt-8"
+              disabled={loading}
+              className="w-full bg-white text-[#1E2A5A] font-bold py-4 rounded-xl transition-all duration-300 hover:bg-[#F8FAFC] hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-[1.02] mt-8 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              Create Account
+              {loading ? 'Creating Account...' : 'Create Account'}
             </button>
           </form>
 

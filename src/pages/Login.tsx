@@ -1,14 +1,38 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 function Login() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/dashboard');
+    setError('');
+    setLoading(true);
+
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        setError(signInError.message);
+        setLoading(false);
+        return;
+      }
+
+      if (data.user) {
+        navigate('/dashboard');
+      }
+    } catch (err) {
+      setError('An unexpected error occurred');
+      setLoading(false);
+    }
   };
 
   return (
@@ -18,6 +42,12 @@ function Login() {
           <h1 className="text-[1.85rem] font-bold text-white mb-5">
             Welcome back — let's get things done.
           </h1>
+
+          {error && (
+            <div className="bg-red-500/20 border border-red-500/50 text-white px-4 py-3 rounded-lg mb-4">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div>
@@ -52,9 +82,10 @@ function Login() {
 
             <button
               type="submit"
-              className="w-full bg-white text-[#1E2A5A] font-bold py-4 rounded-xl transition-all duration-300 hover:bg-[#F8FAFC] hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-[1.02] mt-8"
+              disabled={loading}
+              className="w-full bg-white text-[#1E2A5A] font-bold py-4 rounded-xl transition-all duration-300 hover:bg-[#F8FAFC] hover:shadow-[0_0_20px_rgba(255,255,255,0.3)] hover:scale-[1.02] mt-8 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
             >
-              Login
+              {loading ? 'Logging in...' : 'Login'}
             </button>
           </form>
 
