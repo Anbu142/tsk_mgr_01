@@ -260,12 +260,20 @@ function Dashboard() {
       <header className="h-[75px] bg-white/10 backdrop-blur-[10px] border-b border-white/[0.18] shadow-[0_4px_16px_rgba(0,0,0,0.15)] sticky top-0 z-50">
         <div className="h-full max-w-6xl mx-auto px-8 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-white">Task Manager</h1>
-          <button
-            onClick={handleLogout}
-            className="bg-white text-[#1E2A5A] font-bold py-[0.65rem] px-6 rounded-[10px] transition-all duration-300 hover:bg-[#F8FAFC] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigate('/profile')}
+              className="bg-white/10 text-white font-medium py-[0.65rem] px-6 rounded-[10px] transition-all duration-300 hover:bg-white/20"
+            >
+              Profile
+            </button>
+            <button
+              onClick={handleLogout}
+              className="bg-white text-[#1E2A5A] font-bold py-[0.65rem] px-6 rounded-[10px] transition-all duration-300 hover:bg-[#F8FAFC] hover:shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
