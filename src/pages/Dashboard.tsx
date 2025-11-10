@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import { Upload, User } from 'lucide-react';
 
 interface Task {
   id: string;
@@ -18,6 +19,12 @@ interface Subtask {
   created_at: string;
 }
 
+interface UserProfile {
+  id: string;
+  user_id: string;
+  profile_picture_url: string | null;
+}
+
 function Dashboard() {
   const navigate = useNavigate();
   const [newTask, setNewTask] = useState('');
@@ -29,6 +36,9 @@ function Dashboard() {
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [generatingSubtasks, setGeneratingSubtasks] = useState<string | null>(null);
   const [suggestedSubtasks, setSuggestedSubtasks] = useState<Record<string, string[]>>({});
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -40,6 +50,7 @@ function Dashboard() {
         setUserId(user.id);
         setLoading(false);
         loadTasks(user.id);
+        loadProfile(user.id);
       }
     };
 
@@ -74,6 +85,21 @@ function Dashboard() {
       console.error('Error loading subtasks:', error);
     } else {
       setSubtasks((prev) => ({ ...prev, [taskId]: data || [] }));
+    }
+  };
+
+  const loadProfile = async (uid: string) => {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('user_id', uid)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Error loading profile:', error);
+    } else if (data) {
+      setProfile(data);
+      setProfilePictureUrl(data.profile_picture_url);
     }
   };
 
@@ -209,6 +235,68 @@ function Dashboard() {
     }
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${userId}/${Date.now()}.${fileExt}`;
+
+      if (profile?.profile_picture_url) {
+        const oldPath = profile.profile_picture_url.split('/').slice(-2).join('/');
+        await supabase.storage
+          .from('profile-pictures')
+          .remove([oldPath]);
+      }
+
+      const { error: uploadError } = await supabase.storage
+        .from('profile-pictures')
+        .upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('profile-pictures')
+        .getPublicUrl(fileName);
+
+      const { error: dbError } = await supabase
+        .from('user_profiles')
+        .upsert({
+          user_id: userId,
+          profile_picture_url: publicUrl,
+          updated_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id',
+        });
+
+      if (dbError) {
+        throw dbError;
+      }
+
+      setProfilePictureUrl(publicUrl);
+      await loadProfile(userId);
+      alert('Profile picture uploaded successfully!');
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('Failed to upload profile picture. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const toggleTaskExpansion = (taskId: string) => {
     setExpandedTasks((prev) => {
       const newSet = new Set(prev);
@@ -278,6 +366,45 @@ function Dashboard() {
       </header>
 
       <main className="max-w-[900px] mx-auto px-6 md:px-10 py-14">
+        <div className="mb-10 bg-white/10 backdrop-blur-[10px] border border-white/[0.18] rounded-[14px] p-6 shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
+          <div className="flex items-center gap-6">
+            <div className="w-20 h-20 rounded-full overflow-hidden bg-white/5 border-2 border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.2)] flex items-center justify-center flex-shrink-0">
+              {profilePictureUrl ? (
+                <img
+                  src={profilePictureUrl}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-10 h-10 text-white/40" />
+              )}
+            </div>
+            <div className="flex-grow">
+              <h3 className="text-white text-lg font-semibold mb-1">Profile Picture</h3>
+              <p className="text-white/60 text-sm mb-3">Upload or update your profile picture</p>
+              <label
+                htmlFor="file-upload"
+                className={`inline-flex items-center gap-2 bg-white/10 text-white text-sm font-medium py-2 px-4 rounded-lg transition-all duration-300 cursor-pointer ${
+                  uploading
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'hover:bg-white/20'
+                }`}
+              >
+                <Upload className="w-4 h-4" />
+                {uploading ? 'Uploading...' : 'Upload Picture'}
+              </label>
+              <input
+                id="file-upload"
+                type="file"
+                accept="image/*"
+                onChange={handleFileUpload}
+                disabled={uploading}
+                className="hidden"
+              />
+            </div>
+          </div>
+        </div>
+
         <h2 className="text-[2.2rem] font-bold text-white mb-8">Your Tasks</h2>
 
         <div className="mb-10 bg-white/10 backdrop-blur-[10px] border border-white/[0.18] rounded-[14px] p-6">
