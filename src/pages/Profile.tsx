@@ -12,6 +12,7 @@ interface UserProfile {
 function Profile() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -25,6 +26,7 @@ function Profile() {
         navigate('/login');
       } else {
         setUserId(user.id);
+        setUserEmail(user.email || '');
         await loadProfile(user.id);
         setLoading(false);
       }
@@ -146,7 +148,7 @@ function Profile() {
       </header>
 
       <main className="max-w-[900px] mx-auto px-6 md:px-10 py-14">
-        <h2 className="text-[2.2rem] font-bold text-white mb-8">Your Profile</h2>
+        <h2 className="text-[2.2rem] font-bold text-white mb-8">Profile Picture</h2>
 
         <div className="bg-white/10 backdrop-blur-[10px] border border-white/[0.18] rounded-[14px] p-8 shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
           <div className="flex flex-col items-center space-y-6">
@@ -162,12 +164,9 @@ function Profile() {
               )}
             </div>
 
-            <div className="text-center space-y-3">
-              <h3 className="text-white text-xl font-semibold">
-                {profilePictureUrl ? 'Update Profile Picture' : 'Upload Profile Picture'}
-              </h3>
-              <p className="text-white/60 text-sm">
-                Choose an image file to set as your profile picture
+            <div className="text-center">
+              <p className="text-white/80 text-lg font-medium">
+                {userEmail}
               </p>
             </div>
 
