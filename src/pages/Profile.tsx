@@ -12,6 +12,7 @@ interface UserProfile {
 function Profile() {
   const navigate = useNavigate();
   const [userId, setUserId] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -26,6 +27,7 @@ function Profile() {
         navigate('/login');
       } else {
         setUserId(user.id);
+        setUserName(user.user_metadata?.name || '');
         setUserEmail(user.email || '');
         await loadProfile(user.id);
         setLoading(false);
@@ -166,7 +168,7 @@ function Profile() {
 
             <div className="text-center">
               <p className="text-white/80 text-lg font-medium">
-                {userEmail}
+                {userName} ({userEmail})
               </p>
             </div>
 
