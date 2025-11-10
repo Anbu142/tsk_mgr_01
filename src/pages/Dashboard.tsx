@@ -39,6 +39,8 @@ function Dashboard() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profilePictureUrl, setProfilePictureUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [userName, setUserName] = useState<string>('');
+  const [userEmail, setUserEmail] = useState<string>('');
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -48,6 +50,8 @@ function Dashboard() {
         navigate('/login');
       } else {
         setUserId(user.id);
+        setUserName(user.user_metadata?.name || '');
+        setUserEmail(user.email || '');
         setLoading(false);
         loadTasks(user.id);
         loadProfile(user.id);
@@ -381,6 +385,9 @@ function Dashboard() {
             </div>
             <div className="flex-grow">
               <h3 className="text-white text-lg font-semibold mb-1">Profile Picture</h3>
+              <p className="text-white/60 text-sm mb-1">
+                {userName} ({userEmail})
+              </p>
               <p className="text-white/60 text-sm mb-3">Upload or update your profile picture</p>
               <label
                 htmlFor="file-upload"
