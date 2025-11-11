@@ -41,6 +41,9 @@ function Dashboard() {
   const [uploading, setUploading] = useState(false);
   const [userName, setUserName] = useState<string>('');
   const [userEmail, setUserEmail] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Task[]>([]);
+  const [searching, setSearching] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -115,7 +118,7 @@ function Dashboard() {
   const handleAddTask = async () => {
     if (!newTask.trim()) return;
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('tasks')
       .insert([
         {
@@ -124,7 +127,9 @@ function Dashboard() {
           priority: newPriority,
           status: 'pending',
         },
-      ]);
+      ])
+      .select()
+      .single();
 
     if (error) {
       console.error('Error adding task:', error);
@@ -132,6 +137,59 @@ function Dashboard() {
       setNewTask('');
       setNewPriority('medium');
       loadTasks(userId);
+
+      if (data) {
+        await generateTaskEmbedding(data.id, data.title);
+      }
+    }
+  };
+
+  const generateTaskEmbedding = async (taskId: string, taskTitle: string) => {
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-task-embedding`;
+      await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ taskId, taskTitle }),
+      });
+    } catch (error) {
+      console.error('Error generating embedding:', error);
+    }
+  };
+
+  const handleSmartSearch = async () => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+
+    setSearching(true);
+
+    try {
+      const apiUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/smart-search`;
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query: searchQuery, userId }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+
+      const data = await response.json();
+      setSearchResults(data.tasks || []);
+    } catch (error) {
+      console.error('Error searching tasks:', error);
+      alert('Failed to search tasks. Please try again.');
+    } finally {
+      setSearching(false);
     }
   };
 
@@ -413,6 +471,61 @@ function Dashboard() {
         </div>
 
         <h2 className="text-[2.2rem] font-bold text-white mb-8">Your Tasks</h2>
+
+        <div className="mb-10 bg-gradient-to-r from-blue-500/10 to-cyan-500/10 backdrop-blur-[10px] border border-blue-400/30 rounded-[14px] p-6 shadow-[0_4px_20px_rgba(59,130,246,0.15)]">
+          <h3 className="text-white text-lg font-semibold mb-4">Smart Search</h3>
+          <div className="space-y-4">
+            <div className="flex gap-3">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSmartSearch()}
+                placeholder="Search tasks using natural language..."
+                className="flex-grow px-4 py-3 rounded-xl bg-white/[0.12] border border-blue-300/20 text-white placeholder:text-white/60 focus:outline-none focus:border-blue-400/40 transition-all duration-300"
+              />
+              <button
+                onClick={handleSmartSearch}
+                disabled={searching}
+                className="bg-blue-500 text-white font-bold py-3 px-8 rounded-xl transition-all duration-300 hover:bg-blue-600 hover:shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {searching ? 'Searching...' : 'Search'}
+              </button>
+            </div>
+
+            {searchResults.length > 0 && (
+              <div className="space-y-2 pt-2">
+                <p className="text-blue-200 text-sm font-medium">Top matching tasks:</p>
+                {searchResults.map((task) => (
+                  <div
+                    key={task.id}
+                    className="bg-white/10 backdrop-blur-sm border border-blue-300/20 rounded-lg p-4 hover:bg-white/15 transition-all duration-200"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-grow">
+                        <h4 className="text-white font-medium mb-2">{task.title}</h4>
+                        <div className="flex flex-wrap gap-2">
+                          <span className={`px-2 py-1 rounded text-xs font-semibold border ${getPriorityColor(task.priority)}`}>
+                            {task.priority.toUpperCase()}
+                          </span>
+                          <span className={`px-2 py-1 rounded text-xs font-semibold border ${getStatusColor(task.status)}`}>
+                            {task.status.toUpperCase()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {searchQuery && searchResults.length === 0 && !searching && (
+              <p className="text-blue-200/70 text-sm text-center py-2">
+                No matching tasks found. Try a different search query.
+              </p>
+            )}
+          </div>
+        </div>
 
         <div className="mb-10 bg-white/10 backdrop-blur-[10px] border border-white/[0.18] rounded-[14px] p-6">
           <div className="space-y-4">
